@@ -74,11 +74,15 @@ module Church4Christ
     # account-level Help Links setting for the AGPL §13 source offer.
     def apply_to!(account)
       corresponding_source_url
-      brand_config = account.create_brand_config!(variables: existing_theme_variables(account).merge(theme_variables))
-      account.settings[:custom_help_links] = configured_help_links(account.settings[:custom_help_links])
+      brand_config = BrandConfig.for(variables: existing_theme_variables(account).merge(theme_variables))
+      brand_config.save_unless_dup!
+      brand_config.save_and_sync_to_s3!
+
+      account.settings[:custom_help_links] = configured_help_links(account)
       account.settings[:new_custom_help_links] = true
       account.save!
-      brand_config.save_all_files!
+
+      BrandConfigRegenerator.process(account, nil, brand_config) if account.brand_config_md5 != brand_config.md5
       brand_config
     end
 
@@ -137,8 +141,8 @@ module Church4Christ
       account.brand_config&.variables&.deep_dup || {}
     end
 
-    def configured_help_links(existing_links)
-      links = Array(existing_links).map { |link| link.with_indifferent_access.deep_dup }
+    def configured_help_links(account)
+      links = Array(account.help_links).map { |link| link.with_indifferent_access.deep_dup }
       links.reject! { |link| link[:id].to_s == HELP_LINK_ID }
       links.each { |link| link[:is_featured] = false if link[:is_featured] }
       links << corresponding_source_help_link

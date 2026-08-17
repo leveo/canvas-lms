@@ -44,12 +44,15 @@ release, not merely an upstream Canvas repository.
      bin/rake church4christ:configure
    ```
 
-   The task persists the supported Theme Editor variables, writes/uploads the
-   resulting brand files through Canvas's `BrandConfig#save_all_files!`, and
-   installs the featured all-user Help link. Run it again after changing a
-   `C4C_*` value. Verify as an unauthenticated and authenticated user that the
-   Help menu shows “Church4Christ Learning — Source Code & License” and that
-   its link can download the corresponding source.
+   The task persists the supported Theme Editor variables, publishes the
+   resulting brand files through Canvas's `BrandConfig#save_and_sync_to_s3!`,
+   then queues Canvas's `BrandConfigRegenerator` to attach the theme and
+   regenerate branded descendants. It also installs the featured all-user Help
+   link. Keep the background-job service running and wait for this regeneration
+   progress before treating the theme change as active. Run the task again after
+   changing a `C4C_*` value. Verify as an unauthenticated and authenticated user
+   that the Help menu shows “Church4Christ Learning — Source Code & License” and
+   that its link can download the corresponding source.
 5. Keep the source offer available for as long as users can interact with that
    deployed modified version. Preserve `LICENSE`, `COPYRIGHT`, and
    `CHURCH4CHRIST_NOTICE.md` in each source release.

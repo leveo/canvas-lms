@@ -233,6 +233,7 @@ describe Church4Christ::Configuration do
 
     before do
       allow(BrandConfig).to receive(:for).and_return(brand_config)
+      allow(BrandConfigRegenerator).to receive(:process)
       allow(account).to receive(:save!)
       allow(brand_config).to receive(:save_and_sync_to_s3!).and_raise("asset publication failed")
     end

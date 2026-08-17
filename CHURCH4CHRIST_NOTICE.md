@@ -68,3 +68,13 @@ prominent offer to remote users, is insufficient.
   octal, hexadecimal, and single-integer spellings that can resolve to
   loopback addresses. Canonical public DNS, IPv4, and IPv6 source URLs remain
   supported.
+
+### 2026-08-17 — native theme publication and regeneration
+
+- Replaced direct account BrandConfig creation with Canvas's deduplicating
+  `BrandConfig.for`/`save_unless_dup!` flow. Theme assets publish before Canvas
+  attaches the new configuration, and branded descendants regenerate through
+  `BrandConfigRegenerator`.
+- Updated Help-link configuration to preserve Canvas's effective default links
+  while explicitly clearing any effective featured link before adding the
+  featured Church4Christ Corresponding Source entry.
