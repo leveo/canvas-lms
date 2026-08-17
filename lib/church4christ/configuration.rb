@@ -103,6 +103,7 @@ module Church4Christ
 
       normalized_host = host.downcase.delete_suffix(".")
       return false if local_source_hostname?(normalized_host)
+      return false if ambiguous_numeric_ipv4?(normalized_host)
 
       ip_address = IPAddr.new(normalized_host)
       NON_PUBLIC_SOURCE_NETWORKS.none? { |network| network.include?(ip_address) }
@@ -112,6 +113,17 @@ module Church4Christ
 
     def local_source_hostname?(host)
       host == "localhost" || LOCAL_SOURCE_HOSTNAME_SUFFIXES.any? { |suffix| host.end_with?(".#{suffix}") }
+    end
+
+    # Browsers accept legacy IPv4 spellings such as 127.1, 0177.0.0.1,
+    # 0x7f.0.0.1, and 2130706433, which can resolve to loopback addresses.
+    # Accept only four decimal components before treating a numeric host as IPv4.
+    def ambiguous_numeric_ipv4?(host)
+      components = host.split(".")
+      return false unless components.all? { |component| component.match?(/\A(?:0x[0-9a-f]+|0[0-7]*|[0-9]+)\z/i) }
+      return true unless components.length == 4
+
+      components.any? { |component| component.length > 1 && component.start_with?("0") }
     end
 
     def color(key, default)

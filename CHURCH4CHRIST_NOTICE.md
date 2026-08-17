@@ -61,3 +61,10 @@ prominent offer to remote users, is insufficient.
 - Validated the source offer before the configuration task mutates an account,
   and added regression coverage for idempotent account theme/help-link updates,
   featured-link constraints, and root-account task validation.
+
+### 2026-08-17 — canonical numeric source hosts
+
+- Rejected browser-ambiguous numeric IPv4 host forms, including shortened,
+  octal, hexadecimal, and single-integer spellings that can resolve to
+  loopback addresses. Canonical public DNS, IPv4, and IPv6 source URLs remain
+  supported.

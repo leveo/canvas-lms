@@ -12,7 +12,7 @@ orchestrator's ordinary configuration store. Do not put credentials in them.
 
 | Name | Required | Meaning |
 | --- | --- | --- |
-| `C4C_CORRESPONDING_SOURCE_URL` | yes | Public `https://` URL from which every remote user can copy the exact Corresponding Source for the deployed build at no charge. Loopback, private, link-local, local-name, credentialed, and fragment URLs are rejected. |
+| `C4C_CORRESPONDING_SOURCE_URL` | yes | Public `https://` URL from which every remote user can copy the exact Corresponding Source for the deployed build at no charge. Loopback, private, link-local, local-name, credentialed, fragment, and ambiguous numeric IPv4 URLs are rejected. |
 | `C4C_ROOT_ACCOUNT_ID` | no | Root Canvas account to configure; uses `Account.default` when unset. |
 | `C4C_THEME_PRIMARY` | no | Six-digit hex primary color; default `#1d5c3a`. |
 | `C4C_THEME_NAV_BACKGROUND` | no | Six-digit hex global-navigation color; default `#143d29`. |
