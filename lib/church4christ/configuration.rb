@@ -10,6 +10,7 @@
 # Public License, version 3. See LICENSE and CHURCH4CHRIST_NOTICE.md.
 #
 
+require "ipaddr"
 require "uri"
 
 module Church4Christ
@@ -18,6 +19,25 @@ module Church4Christ
     USER_TYPES = %w[user student teacher admin observer unenrolled].freeze
     DEFAULT_PRIMARY_COLOR = "#1d5c3a"
     DEFAULT_NAV_BACKGROUND_COLOR = "#143d29"
+    NON_PUBLIC_SOURCE_NETWORKS = %w[
+      0.0.0.0/8
+      10.0.0.0/8
+      100.64.0.0/10
+      127.0.0.0/8
+      169.254.0.0/16
+      172.16.0.0/12
+      192.0.0.0/24
+      192.168.0.0/16
+      198.18.0.0/15
+      224.0.0.0/4
+      240.0.0.0/4
+      ::/128
+      ::1/128
+      fc00::/7
+      fe80::/10
+      ff00::/8
+    ].map { |network| IPAddr.new(network) }.freeze
+    LOCAL_SOURCE_HOSTNAME_SUFFIXES = %w[localhost local internal test invalid].freeze
 
     def initialize(environment: ENV)
       @environment = environment
@@ -53,6 +73,7 @@ module Church4Christ
     # Creates a supported Canvas Theme Editor BrandConfig and uses Canvas's
     # account-level Help Links setting for the AGPL §13 source offer.
     def apply_to!(account)
+      corresponding_source_url
       brand_config = account.create_brand_config!(variables: existing_theme_variables(account).merge(theme_variables))
       account.settings[:custom_help_links] = configured_help_links(account.settings[:custom_help_links])
       account.settings[:new_custom_help_links] = true
@@ -66,11 +87,31 @@ module Church4Christ
     def corresponding_source_url
       value = @environment["C4C_CORRESPONDING_SOURCE_URL"].to_s.strip
       uri = URI.parse(value)
-      return value if uri.is_a?(URI::HTTP) && !uri.host.nil? && uri.userinfo.nil?
+      return value if public_source_url?(uri)
 
-      raise ArgumentError, "C4C_CORRESPONDING_SOURCE_URL must be a public http(s) URL"
+      raise ArgumentError, "C4C_CORRESPONDING_SOURCE_URL must be a public HTTPS URL"
     rescue URI::InvalidURIError
-      raise ArgumentError, "C4C_CORRESPONDING_SOURCE_URL must be a public http(s) URL"
+      raise ArgumentError, "C4C_CORRESPONDING_SOURCE_URL must be a public HTTPS URL"
+    end
+
+    def public_source_url?(uri)
+      uri.scheme == "https" && uri.userinfo.nil? && uri.fragment.nil? && public_source_host?(uri.hostname || uri.host)
+    end
+
+    def public_source_host?(host)
+      return false if host.nil? || host.empty?
+
+      normalized_host = host.downcase.delete_suffix(".")
+      return false if local_source_hostname?(normalized_host)
+
+      ip_address = IPAddr.new(normalized_host)
+      NON_PUBLIC_SOURCE_NETWORKS.none? { |network| network.include?(ip_address) }
+    rescue IPAddr::InvalidAddressError
+      normalized_host.include?(".")
+    end
+
+    def local_source_hostname?(host)
+      host == "localhost" || LOCAL_SOURCE_HOSTNAME_SUFFIXES.any? { |suffix| host.end_with?(".#{suffix}") }
     end
 
     def color(key, default)

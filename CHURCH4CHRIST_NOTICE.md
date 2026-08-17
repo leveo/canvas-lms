@@ -53,3 +53,11 @@ prominent offer to remote users, is insufficient.
   preserves GNU AGPL v3, Instructure, Inc., and non-endorsement attribution.
 - Added operational documentation for development and production deployment,
   services, secret handling, backups/restores, and upstream updates.
+
+### 2026-08-17 — source-link validation and configuration safety
+
+- Restricted the Corresponding Source offer to public HTTPS URLs and rejected
+  loopback, private, link-local, local-name, credentialed, and fragment URLs.
+- Validated the source offer before the configuration task mutates an account,
+  and added regression coverage for idempotent account theme/help-link updates,
+  featured-link constraints, and root-account task validation.
