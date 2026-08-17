@@ -10,6 +10,8 @@
 # Public License, version 3. See LICENSE and CHURCH4CHRIST_NOTICE.md.
 #
 
+require "delayed/testing"
+
 describe Church4Christ::Configuration do
   let(:source_url) { "https://source.example.org/church4christ/canvas" }
   let(:environment) do
@@ -105,30 +107,35 @@ describe Church4Christ::Configuration do
     end
     let(:settings) { { custom_help_links: existing_links, new_custom_help_links: true } }
     let(:account) { instance_double("Account", settings: settings) }
-    let(:created_brand_configs) { [] }
-
-    before do
-      current_brand_config = existing_brand_config
-      allow(account).to receive(:brand_config) { current_brand_config }
-      allow(account).to receive(:create_brand_config!) do |variables:|
-        brand_config = instance_double("BrandConfig", variables: variables, md5: "church4christ-theme", save_all_files!: true)
-        created_brand_configs << brand_config
-        current_brand_config = brand_config
-        brand_config
-      end
-      allow(account).to receive(:save!)
+    let(:persisted_brand_config) do
+      instance_double(
+        "BrandConfig",
+        md5: "church4christ-theme",
+        variables: existing_theme_variables.merge(configuration.theme_variables),
+        save_unless_dup!: true,
+        save_and_sync_to_s3!: true
+      )
     end
 
-    it "persists supported theme variables and one featured source link without replacing unrelated links" do
+    before do
+      allow(account).to receive(:brand_config).and_return(existing_brand_config)
+      allow(account).to receive(:brand_config_md5).and_return("church4christ-theme")
+      allow(account).to receive(:help_links).and_return(existing_links)
+      allow(account).to receive(:save!)
+      allow(BrandConfig).to receive(:for).and_return(persisted_brand_config)
+    end
+
+    it "reuses the supported persisted BrandConfig and keeps one featured source link" do
       configuration.apply_to!(account)
       configuration.apply_to!(account)
 
-      expect(created_brand_configs.last.variables).to include(
+      expect(persisted_brand_config.variables).to include(
         "ic-brand-font-color-dark" => "#273540",
         "ic-brand-primary" => "#1d5c3a",
         "ic-brand-global-nav-bgd" => "#143d29"
       )
-      expect(created_brand_configs).to all(have_received(:save_all_files!))
+      expect(persisted_brand_config).to have_received(:save_unless_dup!).twice
+      expect(persisted_brand_config).to have_received(:save_and_sync_to_s3!).twice
       expect(account).to have_received(:save!).twice
 
       links = settings[:custom_help_links]
@@ -142,21 +149,99 @@ describe Church4Christ::Configuration do
       environment["C4C_CORRESPONDING_SOURCE_URL"] = "https://127.0.0.1/source"
 
       expect { configuration.apply_to!(account) }.to raise_error(ArgumentError, /public HTTPS URL/)
-      expect(account).not_to have_received(:create_brand_config!)
+      expect(BrandConfig).not_to have_received(:for)
       expect(account).not_to have_received(:save!)
     end
   end
 
   describe "#configured_help_links" do
-    it "replaces only the previous source link and reserves the featured slot" do
-      links = configuration.send(:configured_help_links, [
-        { id: "other", text: "Other", is_featured: true },
-        { id: described_class::HELP_LINK_ID, text: "Old source", url: "https://old.example.org", is_featured: true }
-      ])
+    let(:stored_default_link) { { type: "default", id: :search_the_canvas_guides, text: "Canvas Guides" } }
+    let(:account) do
+      instance_double(
+        "Account",
+        help_links: [
+          stored_default_link.merge(is_featured: true),
+          { id: "other", text: "Other", is_featured: true },
+          { id: described_class::HELP_LINK_ID, text: "Old source", url: "https://old.example.org", is_featured: true }
+        ]
+      )
+    end
+
+    it "normalizes effective default featured links before reserving the source-link slot" do
+      expect(stored_default_link).not_to have_key(:is_featured)
+
+      links = configuration.send(:configured_help_links, account)
 
       expect(links.count { |link| link[:id] == described_class::HELP_LINK_ID }).to eq(1)
       expect(links.find { |link| link[:id] == "other" }).to include(text: "Other", is_featured: false)
+      expect(links.find { |link| link[:id] == :search_the_canvas_guides }).to include(is_featured: false)
       expect(links.count { |link| link[:is_featured] }).to eq(1)
+    end
+  end
+
+  describe "#apply_to! with Canvas persistence" do
+    let(:root_account) { account_model }
+    let(:old_root_brand_config) { BrandConfig.for(variables: { "ic-brand-primary" => "#aa0000" }) }
+    let(:child_account) { Account.create!(parent_account: root_account, name: "Church4Christ child") }
+    let(:child_brand_config) do
+      BrandConfig.for(
+        variables: { "ic-brand-global-nav-bgd" => "#111111" },
+        parent_md5: old_root_brand_config.md5
+      )
+    end
+
+    before do
+      old_root_brand_config.save!
+      root_account.update!(brand_config: old_root_brand_config)
+      child_brand_config.save!
+      child_account.update!(brand_config: child_brand_config)
+    end
+
+    it "publishes a deduplicated root theme and regenerates branded descendants" do
+      configuration.apply_to!(root_account)
+      Delayed::Testing.drain
+
+      applied_brand_config = root_account.reload.brand_config
+      expect(applied_brand_config.variables).to include("ic-brand-primary" => "#1d5c3a")
+      expect(child_account.reload.brand_config.parent).to eq(applied_brand_config)
+
+      expect do
+        configuration.apply_to!(root_account)
+        Delayed::Testing.drain
+      end.not_to change(BrandConfig, :count)
+      expect(root_account.reload.brand_config).to eq(applied_brand_config)
+    end
+  end
+
+  describe "#apply_to! asset publication" do
+    let(:account) do
+      instance_double(
+        "Account",
+        brand_config: instance_double("BrandConfig", variables: {}),
+        brand_config_md5: "old-brand-config",
+        help_links: [],
+        settings: {}
+      )
+    end
+    let(:brand_config) do
+      instance_double(
+        "BrandConfig",
+        md5: "new-brand-config",
+        save_unless_dup!: true
+      )
+    end
+
+    before do
+      allow(BrandConfig).to receive(:for).and_return(brand_config)
+      allow(account).to receive(:save!)
+      allow(brand_config).to receive(:save_and_sync_to_s3!).and_raise("asset publication failed")
+    end
+
+    it "does not activate a theme or update help links when asset publication fails" do
+      expect { configuration.apply_to!(account) }.to raise_error("asset publication failed")
+
+      expect(account).not_to have_received(:save!)
+      expect(BrandConfigRegenerator).not_to have_received(:process)
     end
   end
 end
