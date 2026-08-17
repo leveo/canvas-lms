@@ -49,6 +49,18 @@ describe Church4Christ::Configuration do
     expect(configuration.corresponding_source_help_link[:url]).to eq(source_url)
   end
 
+  it "accepts canonical public DNS, IPv4, and IPv6 corresponding-source URLs" do
+    [
+      "https://source.example.org/church4christ/canvas",
+      "https://8.8.8.8/church4christ/canvas",
+      "https://[2001:4860:4860::8888]/church4christ/canvas"
+    ].each do |public_url|
+      environment["C4C_CORRESPONDING_SOURCE_URL"] = public_url
+
+      expect(configuration.corresponding_source_help_link[:url]).to eq(public_url)
+    end
+  end
+
   it "rejects non-public or non-HTTPS corresponding-source URLs" do
     invalid_urls = [
       "http://source.example.org/church4christ/canvas",
@@ -61,6 +73,12 @@ describe Church4Christ::Configuration do
       "https://172.16.1.2/source",
       "https://192.168.1.2/source",
       "https://169.254.1.2/source",
+      "https://127.1/source",
+      "https://127.0.1/source",
+      "https://0177.0.0.1/source",
+      "https://0x7f.0.0.1/source",
+      "https://2130706433/source",
+      "https://0x7f000001/source",
       "https://[::1]/source",
       "https://[fc00::1]/source",
       "https://[fe80::1]/source",
