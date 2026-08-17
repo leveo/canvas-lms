@@ -39,3 +39,17 @@ prominent offer to remote users, is insufficient.
   not enough (GNU AGPL v3 §13).
 - Update the pinned upstream baseline whenever changes are rebased or merged
   from a newer Canvas LMS commit.
+
+## Church4Christ modification log
+
+### 2026-08-17 — supported theme and source-offer baseline
+
+- Added the `church4christ:configure` deployment task. It uses Canvas's
+  supported Theme Editor `BrandConfig` mechanism for the Church4Christ color
+  theme and Canvas account-level Help Links for the in-product Corresponding
+  Source offer.
+- Added non-secret `C4C_*` configuration for theme colors, root-account
+  selection, and the required public Corresponding Source URL. The Help link
+  preserves GNU AGPL v3, Instructure, Inc., and non-endorsement attribution.
+- Added operational documentation for development and production deployment,
+  services, secret handling, backups/restores, and upstream updates.
