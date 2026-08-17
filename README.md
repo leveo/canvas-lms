@@ -6,6 +6,10 @@ developed and maintained by [Instructure Inc.](https://www.instructure.com/) It 
 AGPLv3 license for use by anyone interested in learning more about or using
 learning management systems.
 
+> **Church4Christ derivative notice:** This repository contains Church4Christ
+> Learning — Canvas Edition. See [CHURCH4CHRIST_NOTICE.md](CHURCH4CHRIST_NOTICE.md)
+> for upstream provenance, licensing obligations, and the non-affiliation notice.
+
 [Please see our main wiki page for more information](http://github.com/instructure/canvas-lms/wiki)
 
 Installation
