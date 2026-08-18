@@ -10,6 +10,8 @@
 # Public License, version 3. See LICENSE and CHURCH4CHRIST_NOTICE.md.
 #
 
+require_relative "../church4christ/configuration"
+
 namespace :church4christ do
   desc "Apply the Church4Christ Theme Editor theme and AGPL source Help link to a root account"
   task configure: :environment do

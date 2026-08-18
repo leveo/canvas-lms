@@ -11,6 +11,7 @@
 #
 
 require "delayed/testing"
+require_relative "../../../lib/church4christ/configuration"
 
 describe Church4Christ::Configuration do
   let(:source_url) { "https://source.example.org/church4christ/canvas" }
@@ -44,7 +45,8 @@ describe Church4Christ::Configuration do
   it "rejects a missing corresponding-source URL" do
     environment.delete("C4C_CORRESPONDING_SOURCE_URL")
 
-    expect { configuration }.to raise_error(ArgumentError, /C4C_CORRESPONDING_SOURCE_URL/)
+    expect { configuration.corresponding_source_help_link }
+      .to raise_error(ArgumentError, /C4C_CORRESPONDING_SOURCE_URL/)
   end
 
   it "accepts a public HTTPS corresponding-source URL" do
